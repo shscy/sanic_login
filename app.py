@@ -22,7 +22,7 @@ async def get_connect(app, loop):
     app.config.redis_cli = await aioredis.create_connection(
         ('localhost', 6379), loop=loop)
     await app.config.redis_cli.execute('set', 'my-key', 'value')
-    app.config.permanent_session_lifetime = 60*30
+    app.config.permanent_session_lifetime = 60*60*24*365
     app.config.secret_key = 'gfegegewhfuengfengfengeng'
     ret = await app.config.redis_cli.execute('get', 'my-key')
     print("redis test:", ret)

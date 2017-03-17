@@ -11,6 +11,35 @@ from base64 import b64decode
 
 iteritems = lambda x: iter(x.items())
 
+
+class UserMinx:
+    def get_id(self):
+        try:
+            return self.id
+        except AttributeError:
+            raise NotImplementedError('No id attribute')
+
+    @property
+    def is_active(self):
+        return True
+
+    @property
+    def is_authenticated(self):
+        return True
+
+    @property
+    def generate_cookie(self):
+        """
+        generate a unique cookie info which  has to be a instance of str or bytes
+        here is a simple example
+        """
+
+        ret = self.get_id()
+        if isinstance(ret, bytes) or isinstance(ret, str):
+            return ret
+        return TypeError("cookie info has to be a str or bytes")
+
+
 class TaggedJSONSerializer(object):
 
     def dumps(self, value):
@@ -46,6 +75,7 @@ class BaseSecurecookieSession:
     key_derivation = 'hmac'
     serializer = session_json_serializer
 
+    @classmethod
     def get_signing_serializer(self, app):
         if not app['secret_key']:
             return None
@@ -57,16 +87,50 @@ class BaseSecurecookieSession:
                                       serializer=self.serializer,
                                       signer_kwargs=signer_kwargs)
 
-
     def loads_cookie(self, request, **kwargs):
-        """ 通过重写这个方法, 可以做到cookie的管理以及 权限的控制等等功能 """
+        """
+        override the method to manager the login_cookie and session, authority, etc.
+        """
         raise NotImplementedError
 
     def dumps_cookie(self, request, response, cookie,  **kwargs):
-        """ 在这里只所以传入loop的值， 是因为在写入cookie的时候， 可以需要 会执行一些异步的任务等
-            主要为了使用 loop.create_task
+        """
+        update the response cookie , then call create_task function to do some other things
         """
         raise NotImplementedError
+
+    def authorize_handle(self, *args, **kwargs):
+        """
+        session and cookie  promise the user has logined,
+        in here, you can control the the detail power of the user
+        redis_cookie could be used for more web servers sharing
+        the same Account, but each server has independent authority.
+        so you can override this method
+        """
+        raise NotImplementedError
+
+
+
+async def login_user(request, response, user_obj, redis_cookie):
+    """ duck type """
+    try:
+        if not user_obj.is_active:
+            return False
+
+        redis_cli = request.app.config.redis_cli
+        await redis_cli.execute('sadd', redis_cookie.redis_cookie_name, user_obj.generate_cookie)
+        try:
+            s = redis_cookie.get_signing_serializer(request.app.config)
+            content = s.dumps(user_obj.generate_cookie)
+            response.cookies[redis_cookie.] = content
+        except:
+            return False
+        return True
+
+    except AttributeError:
+        raise TypeError("login_user accepts the parameter which is the instance of UserMinx or duck type")
+    except TypeError as e:
+        raise e
 
 
 if __name__ == '__main__':
