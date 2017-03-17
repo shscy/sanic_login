@@ -131,11 +131,3 @@ async def login_user(request, response, user_obj, redis_cookie):
         raise TypeError("login_user accepts the parameter which is the instance of UserMinx or duck type")
     except TypeError as e:
         raise e
-
-
-if __name__ == '__main__':
-    a = BaseSecurecookieSession()
-    b = a.get_signing_serializer({"secret_key": "gfegegewhfuengfengfengeng"})
-    c = b.dumps("fewewgf")
-    print(c)
-    print(type(b.loads(c)))
